@@ -1,0 +1,5 @@
+[
+  "test_2.py::test_1_that_needs_resource_a",
+  "test_2.py::test_2_that_does_not",
+  "test_2.py::test_3_that_does"
+]
