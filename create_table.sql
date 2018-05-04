@@ -1,5 +1,4 @@
 
-
 create database if not exists bts;
 use bts;
 drop table if exists flights;
