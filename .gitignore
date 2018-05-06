@@ -3,6 +3,7 @@
 *.csv
 *.7z
 tags.lock
+<<<<<<< HEAD
 **/dataset/**
 
 
