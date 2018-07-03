@@ -4,9 +4,9 @@ from janome.tokenizer import Tokenizer as JanomeTokenizer
 import codecs
 
 # root配下に存在するdocsでcorpusの対象とするPATTERN
-DOC_PATTERN = r'(?!\.)[a-z_\s]+/[a-f0-9]+\.txt'
+DOC_PATTERN = r'.*\.txt'
 
-SENT_PATTERN = u'[^　「」！？。]*[！？。]'
+SENT_PATTERN = r'[^　「」！？。]*[！？。]'
 
 
 class JapaneseCorpusReader(PlaintextCorpusReader):
@@ -19,7 +19,7 @@ class JapaneseCorpusReader(PlaintextCorpusReader):
         """
 
         PlaintextCorpusReader.__init__(self, root, fields,
-                                       word_tokenizer=JanomeTokenizer(udic_enc=encoding),
+                                       word_tokenizer=JanomeTokenizer(),
                                        sent_tokenizer=RegexpTokenizer(sent_pattern),
                                        encoding=encoding)
 

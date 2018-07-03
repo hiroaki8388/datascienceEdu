@@ -1,0 +1,4 @@
+
+
+
+def freq_vectorize
