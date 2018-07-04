@@ -30,8 +30,8 @@ class JapaneseTextNormalizer(BaseEstimator, TransformerMixin):
         """
         corpusReaderのtokenからnormalizeした単語のlistを返す
         :param corpus: JapaneseCorpusReader
-        :return: list(str)
+        :return: list(list(str))
         """
-        transed = [self.normalize(word) for word in corpus.words()]
+        transed = [list(filter(None, [self.normalize(word) for word in sent])) for sent in corpus.sents()]
 
-        return list(filter(None, transed))
+        return transed
