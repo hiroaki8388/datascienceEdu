@@ -51,13 +51,13 @@ class JapaneseTextNormalizer(BaseEstimator, TransformerMixin):
 
 class Word2VecVectorizer(BaseEstimator, TransformerMixin):
     """
-    ScikitLearnにはword2vecのような変換が存在しないので、Gensimより作成する
+    scikit-learnにはword2vecのような変換が存在しないので、Gensimより作成する
     学習済みモデルはこちらのを使う
     http://aial.shiroyagi.co.jp/2017/02/japanese-word2vec-model-builder/
     """
     WORD_DIM = 50
 
-    def __init__(self, path=None):
+    def __init__(self, path='../w2vmodel/latest-ja-word2vec-gensim-model/word2vec.gensim.model'):
         self.path = path
         self.id2word = None
 
