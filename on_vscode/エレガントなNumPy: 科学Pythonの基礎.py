@@ -104,10 +104,10 @@ def class_boxplot(data, classes, color=None, **kargs):
     class2data = defaultdict(list)
 
     for distrib, cls in zip(data, classes):
-        # いったんすべてを初期化
+        # サンプルデータを入れる余地を作る
         for c in all_classes:
             class2data[c].append([])
-        # 末尾に追加していく
+        # 上で確保した領域に追加していく
         class2data[cls][-1] = distrib
 
     fig, ax = plt.subplots()
@@ -126,14 +126,65 @@ log_count_3 = list(np.log1p(counts.T[:3]))
 counts_lib_norm = counts / total_counts * 1000000
 log_ncount_3 = list(np.log1p((counts_lib_norm[:3].T)))
 ax = class_boxplot(log_count_3+log_ncount_3,
-                    classes=['raw_counts']*3+['norm_counts']*3, labels=[1, 2, 3, 1, 2, 3])
-                    
+                   classes=['raw_counts']*3+['norm_counts']*3, labels=[1, 2, 3, 1, 2, 3])
+
 # 明らかにサンプルごとの分散が小さくなる
 
-# %%cyc=it.cycle(list('abc'))
-list(zip([12, 3, 1, 3], cyc))
-colors = plt.rcParams['axes.prop_cycle']
-colors
 
 
 # %%
+# 遺伝子自体が長い場合、当然リード数も長くなると推測される。
+# まず、そのことを確認する　
+
+def binned_boxplot(x, y):
+    # ヒストグラムに変換
+    x_hist, x_bins = np.histogram(x, bins='auto')
+    # xが所属するbinのidを作成
+    x_bin_ids = np.digitize(x, x_bins[:-1])
+
+    binned_y =[y[x_bin_ids == i] for i in range(np.max(x_bin_ids))]
+
+    x_bin_centers = (x_bins[1:]+x_bins[:-1])/2
+    # logに変換するため
+    x_tick_labels = np.round(np.exp(x_bin_centers)).astype(int)
+
+    fig, ax = plt.subplots()
+    ax.boxplot(binned_y, labels=x_tick_labels)
+    reduce_xaxis_label(ax,10)
+
+
+log_counts=np.log(counts_lib_norm+1)
+mean_log_counts=np.mean(log_counts,axis=1)
+
+log_gene_lengths=np.log(gene_lengths)
+
+binned_boxplot(log_gene_lengths,mean_log_counts)
+
+
+#%%
+# 標本間と遺伝子間の正規化
+# 規格化定数
+C=counts
+N=np.sum(counts,axis=0)
+L=gene_lengths
+
+L=L[:,np.newaxis]
+def rpkm(counts,lengths):
+    # オーバーフロー防止
+    C=counts.astype(float)
+    N=np.sum(counts,axis=0)
+    L=lengths
+
+    normed=1e9*C/(N[np.newaxis,:]*L[:,np.newaxis])
+
+    return normed
+
+counts_rpkm=rpkm(counts,gene_lengths)
+
+log_counts=np.log(counts_rpkm+1)
+mean_log_counts=np.mean(log_counts,axis=1)
+log_gene_lengths=np.log(gene_lengths)
+
+binned_boxplot(log_gene_lengths,mean_log_counts)
+# かなり全体的に平坦になる
+
