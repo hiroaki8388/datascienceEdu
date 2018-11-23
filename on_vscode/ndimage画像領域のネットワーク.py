@@ -76,6 +76,61 @@ from scipy import ndimage as ndi
 dsig=ndi.convolve(sig,diff)
 plt.plot(dsig)
 
+#%%
+# ノイズ処理
+sig=sig+np.random.normal(0,0.3,size=sig.shape)
+plt.plot(sig)
+
+
+#%%
+# 畳み込みを利用して、近傍で重み付き平均をとることで
+# ノイズを除去する
+# ガウシアンカーネルで平坦化する
+def gaussian_kernel(size,sigma):
+    positions=np.arange(size)-size//2
+    kernel_raw=np.exp(-positions**2/(2*sigma**2))
+    kernel_normalized=kernel_raw/np.sum(kernel_raw)
+
+    return kernel_raw
+
+
+fig,ax=plt.subplots(4,1)
+# もとの信号
+ax[0].plot(sig)
+# 平坦化せず畳み込み
+ax[1].plot(ndi.convolve(sig,diff))
+
+# 差分フィルタ平坦化カーネルを結合　(結合律を利用)
+smooth_diff=ndi.convolve(gaussian_kernel(30,5),diff)
+sdsig=ndi.convolve(sig,smooth_diff)
+
+# 平坦化
+ax[2].plot(ndi.convolve(sig,gaussian_kernel(30,5)))
+# 平坦化してから差分をとる
+ax[3].plot(sdsig)
+plt.tight_layout()
+
+#%%
+# 画像のフィルタリング(畳み込み)
+coins=coins.astype(float)
+diff2d=np.array([[0,1,0],[1,0,1],[0,1,0]])
+coins_edge=ndi.convolve(coins,diff2d)
+fig,ax=plt.subplots(1,2)
+ax[0].imshow(coins)
+ax[1].imshow(coins_edge)
+
+#%%
+#ノイズを除去して輪郭を際立出せる
+
+# ソーベルフィルタ
+hsovel=np.array(
+[ 
+[1,2,1],
+[0,0,0],
+[-1,-2,-1]
+ ]
+)
+vsovel=hsovel.T
 
 
 
