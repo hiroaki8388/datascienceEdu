@@ -132,7 +132,183 @@ hsovel=np.array(
 )
 vsovel=hsovel.T
 
+def reduce_xaxis_label(ax,factor):
+    plt.setp(ax.xaxis.get_ticklabels(),visible=False)
+
+    for label in ax.xaxis.get_ticklabels()[::factor]:
+        label.set_visible(True)
+
+
+coin_h=ndi.convolve(coins,hsovel)
+coin_v=ndi.convolve(coins,vsovel)
+
+fig,ax=plt.subplots(1,2)
+ax[0].imshow(coin_h,cmap=plt.cm.RdBu)
+ax[1].imshow(coin_v,cmap=plt.cm.RdBu)
+
+for a in ax:
+    reduce_xaxis_label(a,2)
+
+#%%
+#水平と垂直のフィルタリングを重ね合わせる
+plt.imshow(np.sqrt(coin_h**2+coin_v**2))
+
+#%%
+# generic_filterを使う
+# 一次元に変換
+hsobel_r=np.ravel(hsovel)
+vsobel_r=np.ravel(vsovel)
+
+def sobel_magnitude_filter(values):
+        h_edge=values@hsobel_r
+        v_edge=values@vsobel_r
+        # 三平方の和を取る
+        return np.hypot(h_edge,v_edge)
+        
+sobel_mag=ndi.generic_filter(coins,sobel_magnitude_filter,size=3)
+plt.imshow(sobel_mag)
+#%%
+from skimage import morphology
+# 住宅の価格のヒートマップを税率のマップに変換する
+# 1ピクセル=100mとする。値はその区画での価格の中央値
+house_price=(0.5+np.random.rand(100,100))*1e6
+# taxの適用範囲(半径1km=100*10)
+footprint=morphology.disk(radius=10)
+
+# 特定の領域の値段のうち90%目の値段に対して傾斜がかかる
+def tax(prices):
+    return 10000+0.05*np.percentile(prices,90)
+
+# taxを計算
+tax_rate_map=ndi.generic_filter(house_price,tax,footprint=footprint)
+# 畳み込みにより近傍の値段から
+fig,ax=plt.subplots(1,2)
+ax[0].imshow(house_price)
+ax[1].imshow(tax_rate_map)
+
+#%%
+#畳み込みにより、Conwayのライフゲームを構築
+# 増殖、死滅のルール
+
+def next_gen_filter(values):
+        center=values[len(values)//2]
+        neighbors_count=np.sum(values)-center
+        # 隣接するcellが3つならば生き返るか存続し、2つならば存続する
+        if neighbors_count==3 or (center and neighbors_count==2):
+                return 1.
+        
+        # それ以外の場合死滅 
+        else:
+                return 0.
+
+# 畳み込むを行う関数
+def next_generation(board,mode='constant'):
+        return ndi.generic_filter(
+                board,
+                next_gen_filter,
+                size=3,
+                mode=mode
+        )
+
+# 初期条件
+random_board=np.random.randint(0,2,size=(50,50))
+
+# 100世代に渡り実験
+n_generations=200
+# import time
+for gen in range(n_generations):
+        random_board=next_generation(random_board,mode='wrap')
+        plt.imshow(random_board)
+        # time.sleep(1)
 
 
 
+#%%
+a=[1,23,4]
+b=[1,23,4]
+np.hypot(a,b)
 
+
+#%%
+
+# 領域隣接グラフ
+url = ('http://www.eecs.berkeley.edu/Research/Projects/CS/vision/' 'bsds/BSDS300/html/images/plain/normal/color/108073.jpg')
+tiger=io.imread(url)
+# SLICで分割
+from skimage import segmentation,color
+seg=segmentation.slic(tiger,n_segments=30,
+compactness=40.0,enforce_connectivity=True,
+sigma=3)
+
+io.imshow(color.label2rgb(seg,tiger))
+
+#%%
+# セグメント同士の色の差を可視化
+from skimage.future import graph
+g=graph.rag_mean_color(tiger,seg)
+graph.show_rag(seg,g,tiger)
+
+#%%
+import networkx as nx
+
+def add_edge_filter(values,graph):
+        center=values[len(values)//2]
+        for neighbor in values:
+                # neighborが中心ではなく、かつcenterとneighborが同じedgeに所属してないならば、
+                # edgeとして踏力する
+                if neighbor!=center and not graph.has_edge(center,neighbor):
+                        graph.add_edge(center,neighbor)
+        return 0.0
+g
+def build_rag(labels,image):
+        g=nx.Graph()
+        footprint=ndi.generate_binary_structure(
+                labels.ndim,
+                connectivity=1
+        )
+
+        _=ndi.generic_filter(
+                labels,
+                add_edge_filter,
+                footprint=footprint,
+                mode='nearest',
+                extra_arguments=(g,)
+        )
+
+        for n in g:
+                g.node[n]['totalcolor']=np.zeros(3,np.double)
+                g.node[n]['pixelcount']=0
+        
+        for index in np.ndindex(labels.shape):
+                n=labels[index]
+                g.node[n]['totalcolor']+=image[index]
+                g.node[n]['pixelcount']+=1
+
+        return g
+
+#%%
+# 実行
+g=build_rag(seg,tiger)
+for n in g:
+        node=g.node[n]
+        node['mean']=node['totalcolor']/node['pixelcount']
+for u,v in g.edges():
+        d=g.node[u]['mean']-g.node[v]['mean']
+        g[u][v]['weight']=np.linalg.norm(d)
+
+def threshold_graph(g,t):
+        to_remove=[
+                (u,v) for (u,v,d) in g.edges(data=True)
+                if d['weight']>t
+        ]
+
+        g.remove_edges_from(to_remove)
+# 各セグメントの平均の色の差の情報を使用し、エッジの閾値を決定
+threshold_graph(g,80)
+
+map_array=np.zeros(np.max(seg)+1,int)
+for i,segment in enumerate(nx.connected_components(g)):
+        for initial in segment:
+                map_array[int(initial)]=i
+segmented=map_array[seg]
+plt.imshow(color.label2rgb(segmented,tiger))
