@@ -35,7 +35,8 @@ io.imshow(image_A-image_B)
 # 二次元に変換
 image_A_=image_A.mean(axis=2)
 image_B_=image_B.mean(axis=2)
-plt.imshow(image_A_)
+# io.imshow(image_A_-image_B_)
+io.imshow(np.where((image_A_-image_B_)>100,100,0))
 #%%
 # forier変換
 def convertF(image,center=500,f_peak=98):
@@ -49,6 +50,11 @@ def convertF(image,center=500,f_peak=98):
         M//2-center:M//2+center,
         N//2-center:N//2+center
     ]=0
+
+    
+    peak=np.percentile(F_magnitude,f_peak) 
+    filter_=F_magnitude<peak
+    filter_=fftpack.ifftshift(filter_)
 
     
     peak=np.percentile(F_magnitude,f_peak) 
@@ -98,6 +104,32 @@ F_B=convertF(image_B_,1000,f_peak=98)
 
 #%%
 F_diff=diffF(F_A,F_B,1000,f_peak=30)
+=======
+    filter_=F_magnitude>=peak
+    filter_=fftpack.ifftshift(filter_)
+
+    return F_diff*filter_.astype(int)
+#%%
+# 逆変換
+def convertI(F):
+
+    image=fftpack.ifftn(F)
+    image=np.real(image)
+
+    return image
+
+#%%
+fig,ax=plt.subplots(1,4,figsize=(20,20))
+io.imshow(convertI(convertF(image_A_,1500,f_peak=100)),ax=ax[0])
+#%%
+# 変換
+F_A=convertF(image_A_,1500,f_peak=100)
+F_B=convertF(image_B_,1500,f_peak=100)
+
+
+#%%
+F_diff=diffF(F_A,F_B,0,f_peak=0)
+
 
 I_diff=convertI(F_diff)
 
