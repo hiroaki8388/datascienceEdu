@@ -142,33 +142,45 @@ births.pivot_table('births','year','gender',aggfunc='sum').plot()
 births.pivot_table('births','dayofweek','decade',aggfunc='mean').plot()
 
 
+#%%
+# ex シアトル市の自転車数を可視化
+data=pd.read_csv('https://data.seattle.gov/api/views/65db-xm6k/rows.csv?accessType=DOWNLOAD')
+
+data.head()
+#%%
+# データ処理
+data=data.set_index('Date')
+data.index=pd.to_datetime(data.index)
+data.columns=['West','East']
+data['Total']=data.eval('West+East')
+
 
 #%%
-# 日別の出産数グラフ
-births_by_date=births.pivot_table('births',[births.index.month,births.index.day])
-births_by_date.head()
-dummy_year=2014 # 可視化のため、架空の日付を指定
-births_by_date.index=[pd.datetime(2012,m,d) for (m,d) in births_by_date.index]
-births_by_date.plot()
+data.dropna().describe()
+
 
 #%%
-# ex レシピデータ
-# データの読み込み
-url='./../dataset/recipeitems-latest.json.gz'
-# TODO
-urls=[url]
-gzopen=tz.curry(gzip.open)
-read_json=tz.curry(pd.read_json)
+# 単純に可視化して見にくい
+data.plot()
 
-recipe=tz.pipe(
-urls,
-c.map(gzopen(mode='rt')),
-tz.concat,
-c.do(print),
-c.map(lambda line:line.strip()),
-c.map(read_json),
-tz.last
-)
+#%%
+# 週ごとに集計
+weekly=data.resample('W').sum()
+weekly.plot(style=[':','--','-'])
 
 
-recipe
+#%%
+# 30日ごとの移動平均で集計
+daily=data.resample('D').sum()
+fig,ax=plt.subplots(2,1)
+# 直線的な窓
+daily.rolling(30,center=True).sum().plot(ax=ax[0],style=[':','--','-'])
+
+# なめらかにするため、ガウス窓で集計
+daily.rolling(30,center=True,win_type='gaussian').sum(std=10).plot(ax=ax[1],style=[':','--','-'])
+
+#%%
+# 一日あたりの通行量の可視化
+by_time=data.groupby(data.index.time).mean()
+hourly_ticks=4*60*60*np.arange(6)
+by_time.plot(xticks=hourly_ticks,style=[':','--','-'])
