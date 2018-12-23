@@ -140,3 +140,79 @@ clf.fit(X,y)
 # 結果を可視化
 plt.scatter(*X.T,c=y,s=50,cmap='autumn')
 plot_svc_decision_func(clf)
+# 多項分布NaiveBayes
+# ラベルが密以上の場合に使用
+from sklearn.datasets import fetch_20newsgroups
+
+categories = ['talk.religion.misc', 'soc.religion.christian', 'sci.space',
+'comp.graphics']
+train=fetch_20newsgroups(subset='train',categories=categories)
+test=fetch_20newsgroups(subset='test',categories=categories)
+
+train['data'][0]
+
+
+#%%
+# tf-idf変換を行い、モデルに入力する
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import make_pipeline
+
+model=make_pipeline(TfidfVectorizer(),MultinomialNB())
+model.fit(train.data,train.target)
+
+label=model.predict(test.data)
+
+#%%
+# from sklearn.metrics import confusion_matrix
+# mat=confusion_matrix(test.target,label)
+from scipy.sparse import coo_matrix
+c_mat=coo_matrix((np.broadcast_to(1,len(label)),(test.target,label)))
+c_mat.toarray()
+
+#%%
+# 可視化
+sns.heatmap(c_mat.toarray().T,square=True,xticklabels=train.target_names,
+yticklabels=test.target_names,fmt='d',
+annot=True,cbar=False,cmap='RdBu')
+#%%
+# 基底関数回帰
+# 非線形関係にある変数間に線形回帰を適用する
+
+from sklearn.base import BaseEstimator,TransformerMixin
+
+class GaussianFeatures(BaseEstimator,TransformerMixin):
+
+    def __init__(self,N,with_factor=2.0):
+        self.N=N
+        self.with_factor=with_factor
+
+    @staticmethod
+    def _gauss_basis(x,y,width,axis=None):
+        args=(x-y)/width 
+        return np.exp(-0.5*np.sum(args**2,axis))
+
+    def fit(self,X,y=None):
+        self.centers_=np.linspace(X.min(),X.max(),self.N)
+        self.with_=self.with_factor*(self.centers_[1]-self.centers_[0])
+
+        return self
+
+    def transform(self,X):
+        return self._gauss_basis(X[:,:,np.newaxis],self.centers_,self.with_,axis=1)
+#%%
+from sklearn.linear_model import LinearRegression
+rng = np.random.RandomState(1) 
+x = 10 * rng.rand(50)
+y = np.sin(x) + 0.1 * rng.randn(50)
+
+gauss_model=make_pipeline(GaussianFeatures(20),LinearRegression())
+gauss_model.fit(x[:,np.newaxis],y)
+xfit = np.linspace(0, 10, 1000)
+yfit = gauss_model.predict(xfit[:, np.newaxis])
+#%%
+# 可視化
+plt.scatter(x,y)
+plt.plot(xfit,yfit)
+
+#%%
