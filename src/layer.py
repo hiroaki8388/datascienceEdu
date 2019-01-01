@@ -1,9 +1,5 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from toolz import pipe
-sns.set()
 
 
 
@@ -30,7 +26,7 @@ class Sigmoid(Layer):
         return out 
     
     def backward(self, dout):
-        dx = dout*(1.-self.out)*self.out_
+        dx = dout*(1.-self.out_)*self.out_
         return dx
 
 class Affine(Layer):
@@ -48,7 +44,7 @@ class Affine(Layer):
     def backward(self, dout):
         W, b = self.params
         dx = dout@W.T
-        dW = x.T@W 
+        dW = self.x_.T@dout
         db = np.sum(dout, axis=0)
 
         self.grads[0][...] = dW
@@ -64,37 +60,77 @@ class MatMul(Layer):
     
     def forward(self, x):
         W, = self.params
-        self.x_ = x_
+        self.x_ = x
 
-        return x_@W
+        return x@W
 
     def backward(self, dout):
         W, = self.params
 
         dx = dout@W.T 
-        dW = x.T@W
+        dW = x.T@dout
 
         # 深いコピー(初期化の際に確保した領域に上書き)
         self.grads[0][...] = dW
 
         return dx
         
+class SoftmaxWithLoss:
+    def __init__(self):
+        self.params, self.grads = [], []
+        self.y = None  # softmaxの出力
+        self.t = None  # 教師ラベル
 
-class TwoLayerNet:
-    def __init__(self, I, H, O):
-        W1 = np.random.randn(I, H)
-        b1 = np.random.randn(H)
-        W2 = np.random.randn(H, O)
-        b2 = np.random.randn(O)
+    def forward(self, x, t):
+        self.t = t
+        self.y = softmax(x)
 
-        self.layers =[
-            Affine(W1, b1),
-            Sigmoid(),
-            Affine(W2, b2)
-        ]
-        self.params = sum([layer.params for layer in self.layers], [])
+        # 教師ラベルがone-hotベクトルの場合、正解のインデックスに変換
+        if self.t.size == self.y.size:
+            self.t = self.t.argmax(axis=1)
+        loss = cross_entropy_error(self.y, self.t)
+        return loss
 
-    def predict(self, x):
-        funcs = [layer.forward for  layer in self.layers]
+    def backward(self, dout=1):
+        batch_size = self.t.shape[0]
 
-        return pipe(x, *funcs)
+        dx = self.y.copy()
+        dx[np.arange(batch_size), self.t] -= 1
+        dx *= dout
+        dx = dx / batch_size
+
+        return dx
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
+def relu(x):
+    return np.maximum(0, x)
+
+
+def softmax(x):
+    if x.ndim == 2:
+        x = x - x.max(axis=1, keepdims=True)
+        x = np.exp(x)
+        x /= x.sum(axis=1, keepdims=True)
+    elif x.ndim == 1:
+        x = x - np.max(x)
+        x = np.exp(x) / np.sum(np.exp(x))
+
+    return x
+
+
+def cross_entropy_error(y, t):
+    if y.ndim == 1:
+        t = t.reshape(1, t.size)
+        y = y.reshape(1, y.size)
+        
+    # 教師データがone-hot-vectorの場合、正解ラベルのインデックスに変換
+    if t.size == y.size:
+        t = t.argmax(axis=1)
+             
+    batch_size = y.shape[0]
+
+    return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size
