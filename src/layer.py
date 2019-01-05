@@ -15,9 +15,9 @@ class Layer:
     def backward(self, dout):
         pass
 
-class Sigmoid(Layer):
+class Sigmoid:
     def __init__(self):
-        super().__init__()
+        pass
 
     def forward(self, x):
         out = 1/(1+np.exp(-x))
@@ -29,10 +29,11 @@ class Sigmoid(Layer):
         dx = dout*(1.-self.out_)*self.out_
         return dx
 
-class Affine(Layer):
+class Affine:
     def __init__(self, W, b):
         grads = [np.zeros_like(W), np.zeros_like(b)]
-        super().__init__(params=[W, b], grads=grads)
+        self.params=[W, b]
+        self.grads=grads
     
     def forward(self, x):
         W, b = self.params
@@ -53,10 +54,12 @@ class Affine(Layer):
         return dx
 
     
-class MatMul(Layer):
-    def __init(self, W):
-        grads = [np.zeros_like(W)] 
-        super().__init__([W], grads)
+class MatMul:
+    def __init__(self, W):
+        grads = np.zeros_like(W)
+
+        self.params=[W] 
+        self.grads=[grads]
     
     def forward(self, x):
         W, = self.params
@@ -68,7 +71,7 @@ class MatMul(Layer):
         W, = self.params
 
         dx = dout@W.T 
-        dW = x.T@dout
+        dW = self.x_.T@dout
 
         # 深いコピー(初期化の際に確保した領域に上書き)
         self.grads[0][...] = dW
