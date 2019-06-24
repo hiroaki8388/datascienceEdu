@@ -116,8 +116,7 @@ def remove_quotes_comma(csvfile, year, month):
 
 #%%
 def upload(csvfile, bucktname,blobname):
-    client = storage.Client.from_service_account_json('/Users/hiroaki/Develop/project/DIUnit/pycoon/env/scalable-data-science-e3a2d77c286d.json')
-    # client = storage.Client()
+    client = storage.Client()
     bucket = client.get_bucket(bucktname)
     gslocation = f'{bucktname}/{blobname}'
     blob = storage.Blob(blobname, bucket)
@@ -141,8 +140,7 @@ def ingest(year, month, bucketname):
 
 #%%
 def next_month(bucketname):
-    client = storage.Client.from_service_account_json('/Users/hiroaki/Develop/project/DIUnit/pycoon/env/scalable-data-science-e3a2d77c286d.json')
-    # client = storage.Client()
+    client = storage.Client()
     bucket = client.get_bucket(bucketname)
     blobs = list(bucket.list_blobs(prefix = BASE_BLOB_NAME))
     files = [blob.name for blob in blobs if 'csv' in blob.name]
